@@ -1,0 +1,270 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             String             @id @default(cuid())
+  email          String?            @unique
+  phone          String?            @unique
+  passwordHash   String
+  role           String             @default("CUSTOMER")
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  customer       CustomerProfile?
+  notifications  Notification[]
+  auditLogs      AuditLog[]
+}
+
+model CustomerProfile {
+  id        String    @id @default(cuid())
+  user      User      @relation(fields: [userId], references: [id])
+  userId    String    @unique
+  fullName  String
+  addresses Address[]
+  cart      Cart?
+  wishlist  Wishlist?
+  orders    Order[]   @relation("CustomerOrders")
+}
+
+model Fisherman {
+  id          String     @id @default(cuid())
+  name        String
+  email       String?    @unique
+  phone       String?    @unique
+  location    String
+  boatSource  String?
+  status      String     @default("ACTIVE")
+  notes       String?
+  products    Product[]
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+}
+
+model Address {
+  id          String    @id @default(cuid())
+  customer    CustomerProfile @relation(fields: [customerId], references: [id])
+  customerId  String
+  label       String
+  line1       String
+  line2       String?
+  city        String
+  state       String
+  postalCode  String
+  country     String   @default("India")
+  createdAt   DateTime @default(now())
+  orders      Order[]
+}
+
+model Category {
+  id           String    @id @default(cuid())
+  name         String    @unique
+  slug         String    @unique
+  imageUrl     String?
+  enabled      Boolean   @default(true)
+  displayOrder Int       @default(0)
+  products     Product[]
+  createdAt    DateTime  @default(now())
+}
+
+model Product {
+  id                 String          @id @default(cuid())
+  name               String
+  slug               String          @unique
+  description        String
+  category           Category        @relation(fields: [categoryId], references: [id])
+  categoryId         String
+  fisherman          Fisherman?      @relation(fields: [fishermanId], references: [id])
+  fishermanId        String?
+  mrp                Int             @default(0)
+  pricePerKg         Int
+  discountPercentage Int             @default(0)
+  unit               String          @default("kg")
+  stockKg            Int
+  available          Boolean         @default(true)
+  featured           Boolean         @default(false)
+  bestseller         Boolean         @default(false)
+  isNew              Boolean         @default(false)
+  rating             Float           @default(4.8)
+  reviewCount        Int             @default(0)
+  primaryImage       String?
+  imageUrl           String
+  tags               String?
+  cleaningAvailable  Boolean         @default(false)
+  cleaningPrice      Int             @default(0)
+  status             String          @default("DRAFT")
+  catchDate          DateTime
+  catchLocation      String
+  publishedAt        DateTime?
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+  orderItems         OrderItem[]
+  auditLogs          AuditLog[]
+  cartItems          CartItem[]
+  images             ProductImage[]
+  wishlistItems      WishlistItem[]
+}
+
+model ProductImage {
+  id         String   @id @default(cuid())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  url        String
+  altText    String?
+  order      Int      @default(0)
+  isPrimary  Boolean  @default(false)
+}
+
+model Wishlist {
+  id         String          @id @default(cuid())
+  customer   CustomerProfile @relation(fields: [customerId], references: [id])
+  customerId String          @unique
+  items      WishlistItem[]
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+}
+
+model WishlistItem {
+  id         String   @id @default(cuid())
+  wishlist   Wishlist @relation(fields: [wishlistId], references: [id])
+  wishlistId String
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  createdAt  DateTime @default(now())
+}
+
+model Banner {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  title          String
+  subtitle       String?
+  ctaLabel       String
+  ctaDestination String?
+  imageUrl       String
+  enabled        Boolean  @default(true)
+  displayOrder   Int      @default(0)
+  startDate      DateTime @default(now())
+  endDate        DateTime?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Cart {
+  id           String      @id @default(cuid())
+  customer     CustomerProfile @relation(fields: [customerId], references: [id])
+  customerId   String      @unique
+  items        CartItem[]
+  updatedAt    DateTime    @updatedAt
+}
+
+model CartItem {
+  id         String   @id @default(cuid())
+  cart       Cart     @relation(fields: [cartId], references: [id])
+  cartId     String
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  quantityKg Int
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+}
+
+model Order {
+  id              String             @id @default(cuid())
+  orderNumber     String             @unique
+  customer        CustomerProfile    @relation("CustomerOrders", fields: [customerId], references: [id])
+  customerId      String
+  address         Address            @relation(fields: [addressId], references: [id])
+  addressId       String
+  subtotal        Int
+  deliveryFee     Int
+  discount        Int
+  totalAmount     Int
+  paymentStatus   String             @default("PENDING")
+  orderStatus     String             @default("PENDING")
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  items           OrderItem[]
+  statusHistory   OrderStatusHistory[]
+  emailLogs       EmailLog[]         @relation("EmailLogOrder")
+}
+
+model OrderItem {
+  id             String   @id @default(cuid())
+  order          Order    @relation(fields: [orderId], references: [id])
+  orderId        String
+  product        Product  @relation(fields: [productId], references: [id])
+  productId      String
+  productName    String
+  pricePerKg     Int
+  quantityKg     Int
+  subtotal       Int
+}
+
+model OrderStatusHistory {
+  id         String      @id @default(cuid())
+  order      Order       @relation(fields: [orderId], references: [id])
+  orderId    String
+  status     String
+  message    String
+  updatedBy  String
+  createdAt  DateTime    @default(now())
+}
+
+model Notification {
+  id             String    @id @default(cuid())
+  user           User      @relation(fields: [userId], references: [id])
+  userId         String
+  title          String
+  body           String
+  isRead         Boolean   @default(false)
+  relatedOrderId String?
+  createdAt      DateTime  @default(now())
+}
+
+model AuditLog {
+  id            String     @id @default(cuid())
+  user          User       @relation(fields: [userId], references: [id])
+  userId        String
+  product       Product?   @relation(fields: [productId], references: [id])
+  productId     String?
+  entity        String
+  entityId      String
+  action        String
+  changedFrom   String?
+  changedTo     String?
+  createdAt     DateTime   @default(now())
+}
+
+model EmailLog {
+  id                String    @id @default(cuid())
+  type              String
+  recipient         String
+  subject           String
+  order            Order?    @relation("EmailLogOrder", fields: [orderId], references: [id])
+  orderId           String?
+  status            String
+  providerMessageId String?
+  error             String?
+  sentAt            DateTime?
+  createdAt         DateTime  @default(now())
+}
+
+model OtpToken {
+  id         String   @id @default(cuid())
+  email      String
+  token      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
+
+model PasswordResetToken {
+  id         String   @id @default(cuid())
+  email      String
+  token      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+}
